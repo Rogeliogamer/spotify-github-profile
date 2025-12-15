@@ -37,12 +37,20 @@ def get_now_playing():
     except:
         return None
 
+def get_image_base64(url):
+    try:
+        # Descargamos la imagen
+        response = requests.get(url, timeout=5)
+        # La convertimos a texto base64
+        return base64.b64encode(response.content).decode('utf-8')
+    except:
+        return ""
+
 @app.route('/api/spotify')
 def index():
-    # Headers para evitar caché y asegurar que se interprete como imagen
     headers = {
         'Content-Type': 'image/svg+xml; charset=utf-8',
-        'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
     }
@@ -68,18 +76,23 @@ def index():
         # ESTADO: REPRODUCIENDO
         item = data['item']
         
-        # Limpiamos nombres de canción y artista
+        # 1. Limpieza de texto (Sintaxis Fix)
         track_name = html.escape(item['name'])
         artist_name = html.escape(item['artists'][0]['name'])
         
-        # --- CAMBIO CLAVE: Usar la URL directa de la imagen ---
+        # 2. Imagen Miniatura + Base64 (Size + Security Fix)
         images = item['album']['images']
+        cover_b64 = ""
         if len(images) > 0:
-            # Usamos la imagen más pequeña (images[-1]) directamente desde la URL de Spotify
-            cover_url = html.escape(images[-1]['url'])
-            image_tag = f'<image x="10" y="10" width="80" height="80" href="{cover_url}" rx="5" clip-path="inset(0% round 5px)"/>'
+            # images[-1] es la pequeña (64px)
+            cover_url = images[-1]['url'] 
+            cover_b64 = get_image_base64(cover_url)
+        
+        # Construimos la etiqueta de imagen
+        image_tag = ""
+        if cover_b64:
+            image_tag = f'<image x="10" y="10" width="80" height="80" href="data:image/jpeg;base64,{cover_b64}" rx="5"/>'
         else:
-            # Si no hay imagen, un cuadrado gris
             image_tag = '<rect x="10" y="10" width="80" height="80" fill="#333" rx="5"/>'
             
         progress_ms = data['progress_ms']
@@ -99,6 +112,4 @@ def index():
         return Response(xml_header + svg, headers=headers)
 
     except Exception as e:
-        # En caso de error, devolvemos un SVG simple con el mensaje
-        err_svg = f"""<svg width="350" height="50" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" fill="red">Error: {html.escape(str(e))}</text></svg>"""
-        return Response(xml_header + err_svg, headers=headers, status=200)
+        return Response(str(e), status=500)
