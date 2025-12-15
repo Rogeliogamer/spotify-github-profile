@@ -1,6 +1,7 @@
 import os
 import base64
 import requests
+import html # <--- ¡LA CLAVE! Librería para limpiar texto
 from flask import Flask, Response, request
 
 app = Flask(__name__)
@@ -66,10 +67,12 @@ def index():
 
         # REPRODUCIENDO
         item = data['item']
-        track_name = item['name'].replace("&", "&").replace("<", "<").replace(">", ">")
-        artist_name = item['artists'][0]['name'].replace("&", "&").replace("<", "<").replace(">", ">")
         
-        # IMAGEN PEQUEÑA (FIX PARA GITHUB)
+        # --- CORRECCIÓN: Usamos html.escape para que GitHub no rompa la imagen ---
+        track_name = html.escape(item['name'])
+        artist_name = html.escape(item['artists'][0]['name'])
+        
+        # Imagen
         images = item['album']['images']
         if len(images) > 0:
             cover_url = images[-1]['url'] 
