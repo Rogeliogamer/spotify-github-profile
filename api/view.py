@@ -44,12 +44,10 @@ def index():
     try:
         data = get_now_playing()
         
-        # Colores configurables
         bg_color = request.args.get('background_color', '18181b')
         text_color = "ffffff"
         bar_color = request.args.get('bar_color', '1db954')
         
-        # Headers para evitar caché y errores XML
         xml_header = '<?xml version="1.0" encoding="UTF-8"?>'
         headers = {
             'Content-Type': 'image/svg+xml; charset=utf-8',
@@ -57,7 +55,7 @@ def index():
         }
 
         if not data or not data.get('item'):
-            # ESTADO: PAUSA
+            # PAUSA
             svg = f"""<svg width="350" height="100" viewBox="0 0 350 100" xmlns="http://www.w3.org/2000/svg">
                 <rect x="0" y="0" width="350" height="100" rx="10" fill="#{bg_color}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
                 <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#{text_color}" font-family="sans-serif" font-size="14">
@@ -66,17 +64,14 @@ def index():
             </svg>"""
             return Response(xml_header + svg, headers=headers)
 
-        # ESTADO: REPRODUCIENDO
+        # REPRODUCIENDO
         item = data['item']
+        track_name = item['name'].replace("&", "&").replace("<", "<").replace(">", ">")
+        artist_name = item['artists'][0]['name'].replace("&", "&").replace("<", "<").replace(">", ">")
         
-        # Limpieza básica de caracteres especiales (Manual para no depender de librerías extra)
-        track_name = item['name'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        artist_name = item['artists'][0]['name'].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        
-        # --- EL FIX DE ORO: USAR LA IMAGEN MÁS PEQUEÑA ---
+        # IMAGEN PEQUEÑA (FIX PARA GITHUB)
         images = item['album']['images']
         if len(images) > 0:
-            # images[-1] es siempre la miniatura (64px). images[0] es la gigante (640px).
             cover_url = images[-1]['url'] 
             cover_b64 = get_image_base64(cover_url)
         else:
@@ -89,12 +84,9 @@ def index():
 
         svg = f"""<svg width="350" height="100" viewBox="0 0 350 100" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
             <rect x="0" y="0" width="350" height="100" rx="10" fill="#{bg_color}" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
-            
             <image x="10" y="10" width="80" height="80" xlink:href="data:image/jpeg;base64,{cover_b64}" rx="5"/>
-            
             <text x="105" y="35" fill="#{text_color}" font-family="sans-serif" font-size="16" font-weight="bold">{track_name}</text>
             <text x="105" y="55" fill="#b3b3b3" font-family="sans-serif" font-size="14">{artist_name}</text>
-            
             <rect x="105" y="75" width="220" height="4" rx="2" fill="#404040"/>
             <rect x="105" y="75" width="{progress_width}" height="4" rx="2" fill="#{bar_color}"/>
         </svg>"""
