@@ -38,14 +38,12 @@ def get_now_playing():
 
 def get_image_base64(url):
     try:
-        # Descargamos la imagen con timeout para que Vercel no se cuelgue
         return base64.b64encode(requests.get(url, timeout=5).content).decode('utf-8')
     except:
         return ""
 
 @app.route('/api/spotify')
 def index():
-    # HEADERS ESTRICTOS PARA GITHUB
     headers = {
         'Content-Type': 'image/svg+xml; charset=utf-8',
         'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -59,8 +57,6 @@ def index():
         bg_color = request.args.get('background_color', '18181b')
         text_color = "ffffff"
         bar_color = request.args.get('bar_color', '1db954')
-
-        # Declaración XML obligatoria para algunos renderizadores
         xml_header = '<?xml version="1.0" encoding="UTF-8"?>'
 
         if not data or not data.get('item'):
@@ -78,16 +74,18 @@ def index():
         track_name = html.escape(item['name'])
         artist_name = html.escape(item['artists'][0]['name'])
         
-        # Intentar obtener imagen
-        cover_url = item['album']['images'][0]['url']
-        cover_b64 = get_image_base64(cover_url)
+        # --- CAMBIO CLAVE: ELEGIR IMAGEN PEQUEÑA ---
+        images = item['album']['images']
+        if len(images) > 0:
+            # [-1] selecciona la última de la lista (la más pequeña)
+            cover_url = images[-1]['url']
+            cover_b64 = get_image_base64(cover_url)
+        else:
+            cover_b64 = ""
         
-        # Si falla la imagen, usar un cuadro gris (para evitar SVG roto)
         image_tag = ""
         if cover_b64:
             image_tag = f'<image x="10" y="10" width="80" height="80" href="data:image/jpeg;base64,{cover_b64}" rx="5"/>'
-        else:
-            image_tag = '<rect x="10" y="10" width="80" height="80" fill="#333" rx="5"/>'
 
         progress_ms = data['progress_ms']
         duration_ms = item['duration_ms']
@@ -106,6 +104,5 @@ def index():
         return Response(xml_header + svg_content, headers=headers)
 
     except Exception as e:
-        # En caso de error fatal, devolvemos un SVG de error en vez de texto plano
-        err_svg = f"""<?xml version="1.0" encoding="UTF-8"?><svg width="350" height="50" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" fill="red">Error: {html.escape(str(e))}</text></svg>"""
+        err_svg = f"""<?xml version="1.0" encoding="UTF-8"?><svg width="350" height="50" xmlns="http://www.w3.org/2000/svg"><text x="10" y="30" fill="red">Error</text></svg>"""
         return Response(err_svg, headers=headers)
