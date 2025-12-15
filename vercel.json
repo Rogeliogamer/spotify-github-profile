@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/spotify",
-      "destination": "/api/view.py"
+      "destination": "/api/index.py"
     }
   ]
 }
